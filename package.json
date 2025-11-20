@@ -1,0 +1,299 @@
+{
+  "name": "codereview-ai",
+  "displayName": "CodeReview-AI",
+  "description": "AI-powered code review before creating merge requests",
+  "version": "0.0.1",
+  "publisher": "ai-reviewer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com//BogdanMihalca/codereview-ai"
+  },
+  "engines": {
+    "vscode": "^1.106.1"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "pre-mr-review.reviewChanges",
+        "title": "AI Code Review: Review Changes",
+        "icon": "$(feedback)"
+      },
+      {
+        "command": "pre-mr-review.clearHistory",
+        "title": "AI Code Review: Clear History",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "pre-mr-review.openSettings",
+        "title": "AI Code Review: Open Settings"
+      },
+      {
+        "command": "pre-mr-review.showHistoryItem",
+        "title": "AI Code Review: Show Review"
+      },
+      {
+        "command": "pre-mr-review.navigateToIssue",
+        "title": "AI Code Review: Navigate to Issue"
+      },
+      {
+        "command": "pre-mr-review.refreshSidePanel",
+        "title": "AI Code Review: Refresh Side Panel",
+        "icon": "$(refresh)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ai-code-review",
+          "title": "AI Code Review",
+          "icon": "$(feedback)"
+        }
+      ]
+    },
+    "views": {
+      "ai-code-review": [
+        {
+          "id": "reviewHistory",
+          "name": "Review History",
+          "icon": "$(history)"
+        },
+        {
+          "id": "reviewSidePanel",
+          "name": "Current Review",
+          "icon": "$(inspect)"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "pre-mr-review.reviewChanges",
+          "when": "view == reviewHistory",
+          "group": "navigation@1"
+        },
+        {
+          "command": "pre-mr-review.clearHistory",
+          "when": "view == reviewHistory",
+          "group": "navigation@2"
+        },
+        {
+          "command": "pre-mr-review.refreshSidePanel",
+          "when": "view == reviewSidePanel",
+          "group": "navigation@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "pre-mr-review.showHistoryItem",
+          "when": "false"
+        },
+        {
+          "command": "pre-mr-review.navigateToIssue",
+          "when": "false"
+        },
+        {
+          "command": "pre-mr-review.refreshSidePanel",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AI Code Review",
+      "properties": {
+        "aiCodeReview.enableAutoReview": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically review code when opening a PR/MR creation view"
+        },
+        "aiCodeReview.severityThreshold": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "info"
+          ],
+          "default": "info",
+          "description": "Minimum severity level to show in the review"
+        },
+        "aiCodeReview.maxDiffSize": {
+          "type": "number",
+          "default": 1000,
+          "description": "Maximum number of lines to review (to save tokens)"
+        },
+        "aiCodeReview.aiModel": {
+          "type": "object",
+          "properties": {
+            "vendor": {
+              "type": "string",
+              "enum": [
+                "copilot",
+                "openai",
+                "anthropic"
+              ],
+              "default": "copilot",
+              "description": "AI Model Vendor"
+            },
+            "family": {
+              "type": "string",
+              "enum": [
+                "gpt-4.1",
+                "gpt-4o",
+                "gpt-5-mini",
+                "grok-code-fast-1",
+                "raptor-mini-preview",
+                "claude-haiku-4.5",
+                "claude-sonnet-4",
+                "claude-sonnet-4.5",
+                "gemini-2.5-pro",
+                "gemini-3-pro-preview",
+                "gpt-5",
+                "gpt-5-codex-preview",
+                "gpt-5.1-preview",
+                "gpt-5.1-codex-preview",
+                "gpt-5.1-codex-mini-preview"
+              ],
+              "default": "claude-sonnet-4",
+              "description": "Model Family"
+            },
+            "modelId": {
+              "type": "string",
+              "description": "Specific Model ID (optional)"
+            }
+          },
+          "default": {
+            "vendor": "copilot",
+            "family": "gpt-4"
+          },
+          "description": "AI Model Configuration"
+        },
+        "aiCodeReview.customPrompt": {
+          "type": "string",
+          "description": "Custom instructions for the AI reviewer"
+        },
+        "aiCodeReview.excludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/out/**",
+            "**/*.test.ts",
+            "**/*.spec.ts"
+          ],
+          "description": "Glob patterns to exclude from review"
+        },
+        "aiCodeReview.reviewRules": {
+          "type": "object",
+          "properties": {
+            "checkSecurity": {
+              "type": "boolean",
+              "default": true,
+              "description": "Check for security vulnerabilities"
+            },
+            "checkPerformance": {
+              "type": "boolean",
+              "default": true,
+              "description": "Check for performance issues"
+            },
+            "checkCodeSmells": {
+              "type": "boolean",
+              "default": true,
+              "description": "Check for code smells"
+            },
+            "checkTestCoverage": {
+              "type": "boolean",
+              "default": true,
+              "description": "Suggest missing tests"
+            },
+            "checkDocumentation": {
+              "type": "boolean",
+              "default": true,
+              "description": "Check for missing documentation"
+            },
+            "checkAccessibility": {
+              "type": "boolean",
+              "default": false,
+              "description": "Check for accessibility issues"
+            },
+            "strictness": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "balanced",
+                "lenient"
+              ],
+              "default": "balanced",
+              "description": "Review strictness level"
+            }
+          },
+          "default": {
+            "checkSecurity": true,
+            "checkPerformance": true,
+            "checkCodeSmells": true,
+            "checkTestCoverage": true,
+            "checkDocumentation": true,
+            "checkAccessibility": false,
+            "strictness": "balanced"
+          },
+          "description": "Custom review rules"
+        }
+      }
+    },
+    "chatParticipants": [
+      {
+        "id": "ai-reviewer.codereview-ai.reviewer",
+        "name": "reviewer",
+        "description": "AI Code Reviewer assistant",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "summarize",
+            "description": "Summarize the latest review results"
+          },
+          {
+            "name": "explain",
+            "description": "Explain a specific issue or concept"
+          },
+          {
+            "name": "fix",
+            "description": "Help fix an issue"
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.106.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "typescript-eslint": "^8.46.3",
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3",
+    "ts-loader": "^9.5.4",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^6.0.1",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2"
+  }
+}
