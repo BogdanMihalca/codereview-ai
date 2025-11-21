@@ -42,7 +42,9 @@ export interface ReviewResult {
   issues: ReviewIssue[];
   timestamp?: Date;
   targetBranch?: string;
+  currentBranch?: string;
   filesChanged?: number;
+  changedFilesList?: string[]; // List of changed file paths
   securityIssues?: number;
   performanceIssues?: number;
   codeSmells?: number;
@@ -55,6 +57,8 @@ export interface ReviewHistoryItem {
   timestamp: Date;
   targetBranch: string;
   filesChanged: number;
+  currentBranch?: string;
+  changedFilesList?: string[];
 }
 
 export type AIModelFamily =

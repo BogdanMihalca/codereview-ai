@@ -5,11 +5,15 @@ All notable changes to the "AI Code Review" extension will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - TBD
+## [1.0.0] - 2025-11-20
 
-### 🎨 UI/UX Improvements
+### 🎉 Initial Public Release
 
-#### Added
+First production-ready release of AI Code Review extension for VS Code Marketplace.
+
+### ✨ Features
+
+#### AI-Powered Code Analysis
 
 - **Modern, Compact Design**: Redesigned webview with GitHub/GitLab-inspired interface
 - **Proper Code Rendering**: Code blocks with syntax highlighting and line numbers
@@ -125,39 +129,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed navigation only opening files without going to the specific line
 - Fixed excessive spacing between UI elements
 - Improved line number accuracy in issue detection
+- Fixed syntax highlighting issue where HTML tags were being incorrectly parsed in code blocks
+- Fixed issue where file count was always showing as 0 in the side panel
+- Fixed layout issues in the review report
 
-### 🎨 Visual Improvements
+### 💅 UI/UX Refinements
 
-- Better use of VS Code theme colors for consistency
-- Improved contrast for dark and light themes
-- Smooth animations for collapsible sections
-- Better hover states on interactive elements
-- Professional color scheme for severity levels
+- **Complete UI Overhaul**: Implemented a new modern, aesthetic, and compact design system
+- **Improved Typography**: Better font stack and readability with system fonts
+- **Refined Color Palette**: Cleaner colors for badges, status indicators, and code blocks
+- **Streamlined Actions**: Removed redundant "Chat" button from issue cards to reduce clutter
+- **Grid Layout**: Improved header stats with a responsive grid layout
 
 ---
 
-## [0.0.1] - Initial Release
+## [0.0.2] - 2025-11-18
+
+### Changed
+
+- Development iteration
+- Bug fixes and improvements
+
+## [0.0.1] - 2025-11-15
 
 ### Added
 
-- Initial release with basic code review functionality
-- GitHub Copilot integration
-- Issue detection with severity levels
-- Webview panel for displaying results
-- Quick fix suggestions
-- MR description generation
-- Review history tracking
-- Chat participant integration
-- Status bar integration
-- Export to JSON and Markdown
+- Initial development release
+- Basic functionality proof of concept
 
-### Features
-
-- Git diff analysis
-- AI-powered code review
-- Diagnostic integration
-- File exclusion patterns
-- Custom prompts support
-
-[0.1.0]: https://github.com/yourusername/codereview-ai/compare/v0.0.1...v0.1.0
-[0.0.1]: https://github.com/yourusername/codereview-ai/releases/tag/v0.0.1
+[1.0.0]: https://github.com/BogdanMihalca/codereview-ai/releases/tag/v1.0.0
+[0.0.2]: https://github.com/BogdanMihalca/codereview-ai/releases/tag/v0.0.2
+[0.0.1]: https://github.com/BogdanMihalca/codereview-ai/releases/tag/v0.0.1

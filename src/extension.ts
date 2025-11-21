@@ -113,7 +113,9 @@ export function activate(context: vscode.ExtensionContext) {
           context.extensionUri,
           historyItem.result,
           historyItem.targetBranch,
-          historyItem.filesChanged
+          historyItem.filesChanged,
+          historyItem.currentBranch || "",
+          historyItem.changedFilesList || []
         );
       }
     }
@@ -327,7 +329,9 @@ async function reviewChangesBeforeMR(context: vscode.ExtensionContext) {
       historyProvider.addReview(
         reviewResult,
         targetBranch,
-        changedFiles.length
+        changedFiles.length,
+        branch,
+        changedFiles
       );
 
       progress.report({ message: "Preparing results..." });
@@ -350,12 +354,14 @@ async function reviewChangesBeforeMR(context: vscode.ExtensionContext) {
     // Update side panel with the new review
     sidePanelProvider.updateReview(reviewResult);
 
-    // Show Webview Panel (no longer blocking progress)
+    // Show Webview Panel with branch and files info
     ReviewWebviewPanel.createOrShow(
       context.extensionUri,
       reviewResult,
       targetBranch,
-      changedFiles.length
+      changedFiles.length,
+      branch,
+      changedFiles
     );
 
     // Notify about Chat Participant

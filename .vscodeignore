@@ -1,5 +1,6 @@
 .vscode/**
 .vscode-test/**
+.vscode-test.*
 out/**
 node_modules/**
 src/**
@@ -11,4 +12,19 @@ vsc-extension-quickstart.md
 **/eslint.config.mjs
 **/*.map
 **/*.ts
-**/.vscode-test.*
+.github/**
+.git/**
+.DS_Store
+*.vsix
+CONTRIBUTING.md
+PUBLISHING.md
+images/README.md
+images/SCREENSHOTS.md
+images/*.svg
+.eslintrc.json
+.prettierrc
+*.log
+coverage/**
+test/**
+**/*.test.ts
+**/*.spec.ts

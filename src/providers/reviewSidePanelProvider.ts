@@ -76,10 +76,11 @@ export class ReviewSidePanelProvider
       );
 
       // Issues by file
+      const uniqueFiles = new Set(this.currentReview.issues.map(i => i.file));
       items.push(
         new ReviewTreeItem(
           `By File`,
-          `${this.currentReview.filesChanged || 0} files`,
+          `${uniqueFiles.size} file${uniqueFiles.size !== 1 ? 's' : ''}`,
           vscode.TreeItemCollapsibleState.Collapsed,
           "files",
           new vscode.ThemeIcon("folder")

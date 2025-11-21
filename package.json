@@ -1,19 +1,51 @@
 {
   "name": "codereview-ai",
-  "displayName": "CodeReview-AI",
-  "description": "AI-powered code review before creating merge requests",
-  "version": "0.0.1",
-  "publisher": "ai-reviewer",
+  "displayName": "AI Code Review",
+  "description": "AI-powered code review with GitHub Copilot, GPT-4, and Claude. Catch bugs, security issues, and code quality problems before creating merge requests.",
+  "version": "1.0.0",
+  "publisher": "BogdanMihalca",
+  "author": {
+    "name": "Bogdan Mihalca"
+  },
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#4F46E5",
+    "theme": "dark"
+  },
+  "keywords": [
+    "code review",
+    "ai",
+    "copilot",
+    "gpt-4",
+    "claude",
+    "code quality",
+    "security",
+    "linter",
+    "static analysis",
+    "merge request",
+    "pull request",
+    "git",
+    "refactoring",
+    "best practices",
+    "code smells"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com//BogdanMihalca/codereview-ai"
+    "url": "https://github.com/BogdanMihalca/codereview-ai"
   },
+  "bugs": {
+    "url": "https://github.com/BogdanMihalca/codereview-ai/issues"
+  },
+  "homepage": "https://github.com/BogdanMihalca/codereview-ai#readme",
   "engines": {
     "vscode": "^1.106.1"
   },
   "categories": [
     "Linters",
-    "Programming Languages"
+    "Programming Languages",
+    "Machine Learning",
+    "Testing"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -125,54 +157,44 @@
         },
         "aiCodeReview.maxDiffSize": {
           "type": "number",
-          "default": 1000,
+          "default": 10000,
           "description": "Maximum number of lines to review (to save tokens)"
         },
-        "aiCodeReview.aiModel": {
-          "type": "object",
-          "properties": {
-            "vendor": {
-              "type": "string",
-              "enum": [
-                "copilot",
-                "openai",
-                "anthropic"
-              ],
-              "default": "copilot",
-              "description": "AI Model Vendor"
-            },
-            "family": {
-              "type": "string",
-              "enum": [
-                "gpt-4.1",
-                "gpt-4o",
-                "gpt-5-mini",
-                "grok-code-fast-1",
-                "raptor-mini-preview",
-                "claude-haiku-4.5",
-                "claude-sonnet-4",
-                "claude-sonnet-4.5",
-                "gemini-2.5-pro",
-                "gemini-3-pro-preview",
-                "gpt-5",
-                "gpt-5-codex-preview",
-                "gpt-5.1-preview",
-                "gpt-5.1-codex-preview",
-                "gpt-5.1-codex-mini-preview"
-              ],
-              "default": "claude-sonnet-4",
-              "description": "Model Family"
-            },
-            "modelId": {
-              "type": "string",
-              "description": "Specific Model ID (optional)"
-            }
-          },
-          "default": {
-            "vendor": "copilot",
-            "family": "gpt-4"
-          },
-          "description": "AI Model Configuration"
+        "aiCodeReview.aiModel.vendor": {
+          "type": "string",
+          "enum": [
+            "copilot",
+            "openai",
+            "anthropic"
+          ],
+          "default": "copilot",
+          "description": "AI Model Vendor"
+        },
+        "aiCodeReview.aiModel.family": {
+          "type": "string",
+          "enum": [
+            "gpt-4.1",
+            "gpt-4o",
+            "gpt-5-mini",
+            "grok-code-fast-1",
+            "raptor-mini-preview",
+            "claude-haiku-4.5",
+            "claude-sonnet-4",
+            "claude-sonnet-4.5",
+            "gemini-2.5-pro",
+            "gemini-3-pro-preview",
+            "gpt-5",
+            "gpt-5-codex-preview",
+            "gpt-5.1-preview",
+            "gpt-5.1-codex-preview",
+            "gpt-5.1-codex-mini-preview"
+          ],
+          "default": "claude-sonnet-4",
+          "description": "Model Family"
+        },
+        "aiCodeReview.aiModel.modelId": {
+          "type": "string",
+          "description": "Specific Model ID (optional)"
         },
         "aiCodeReview.customPrompt": {
           "type": "string",
@@ -192,60 +214,55 @@
           ],
           "description": "Glob patterns to exclude from review"
         },
-        "aiCodeReview.reviewRules": {
-          "type": "object",
-          "properties": {
-            "checkSecurity": {
-              "type": "boolean",
-              "default": true,
-              "description": "Check for security vulnerabilities"
-            },
-            "checkPerformance": {
-              "type": "boolean",
-              "default": true,
-              "description": "Check for performance issues"
-            },
-            "checkCodeSmells": {
-              "type": "boolean",
-              "default": true,
-              "description": "Check for code smells"
-            },
-            "checkTestCoverage": {
-              "type": "boolean",
-              "default": true,
-              "description": "Suggest missing tests"
-            },
-            "checkDocumentation": {
-              "type": "boolean",
-              "default": true,
-              "description": "Check for missing documentation"
-            },
-            "checkAccessibility": {
-              "type": "boolean",
-              "default": false,
-              "description": "Check for accessibility issues"
-            },
-            "strictness": {
-              "type": "string",
-              "enum": [
-                "strict",
-                "balanced",
-                "lenient"
-              ],
-              "default": "balanced",
-              "description": "Review strictness level"
-            }
-          },
-          "default": {
-            "checkSecurity": true,
-            "checkPerformance": true,
-            "checkCodeSmells": true,
-            "checkTestCoverage": true,
-            "checkDocumentation": true,
-            "checkAccessibility": false,
-            "strictness": "balanced"
-          },
-          "description": "Custom review rules"
+        "aiCodeReview.autoFixOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically apply fixes on save"
+        },
+        "aiCodeReview.showInlineDecorations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inline decorations for issues"
+        },
+        "aiCodeReview.reviewRules.checkSecurity": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check for security vulnerabilities"
+        },
+        "aiCodeReview.reviewRules.checkPerformance": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check for performance issues"
+        },
+        "aiCodeReview.reviewRules.checkCodeSmells": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check for code smells"
+        },
+        "aiCodeReview.reviewRules.checkTestCoverage": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suggest missing tests"
+        },
+        "aiCodeReview.reviewRules.checkDocumentation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check for missing documentation"
+        },
+        "aiCodeReview.reviewRules.checkAccessibility": {
+          "type": "boolean",
+          "default": false,
+          "description": "Check for accessibility issues"
+        },
+        "aiCodeReview.reviewRules.strictness": {
+          "type": "string",
+          "enum": [
+            "strict",
+            "balanced",
+            "lenient"
+          ],
+          "default": "balanced",
+          "description": "Review strictness level"
         }
       }
     },
@@ -281,19 +298,28 @@
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "vsce:package": "vsce package",
+    "vsce:publish": "vsce publish",
+    "vsce:publish:patch": "vsce publish patch",
+    "vsce:publish:minor": "vsce publish minor",
+    "vsce:publish:major": "vsce publish major"
   },
   "devDependencies": {
-    "@types/vscode": "^1.106.1",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "typescript-eslint": "^8.46.3",
-    "eslint": "^9.39.1",
-    "typescript": "^5.9.3",
-    "ts-loader": "^9.5.4",
-    "webpack": "^5.102.1",
-    "webpack-cli": "^6.0.1",
+    "@types/vscode": "^1.106.1",
     "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.0",
+    "eslint": "^9.39.1",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.3",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1"
   }
 }

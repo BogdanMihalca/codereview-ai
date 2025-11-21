@@ -61,6 +61,9 @@ export class AIService {
       try {
         const result = JSON.parse(fullResponse) as ReviewResult;
 
+        // Set the file count from the actual changed files list
+        result.filesChanged = changedFiles.length;
+
         // Verify line numbers if code snippets are provided
         if (result.issues && result.issues.length > 0) {
           const workspaceRoot =

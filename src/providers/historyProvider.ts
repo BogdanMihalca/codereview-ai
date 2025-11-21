@@ -22,7 +22,9 @@ export class ReviewHistoryProvider
   addReview(
     result: ReviewResult,
     targetBranch: string,
-    filesChanged: number
+    filesChanged: number,
+    currentBranch?: string,
+    changedFilesList?: string[]
   ): void {
     const item: ReviewHistoryItem = {
       id: Date.now().toString(),
@@ -30,6 +32,8 @@ export class ReviewHistoryProvider
       timestamp: new Date(),
       targetBranch,
       filesChanged,
+      currentBranch,
+      changedFilesList,
     };
     this.history.unshift(item);
     if (this.history.length > 20) {

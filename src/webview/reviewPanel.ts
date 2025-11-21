@@ -3,6 +3,7 @@ import { ReviewIssue, ReviewResult, CodeFix, FixStatus } from "../types";
 import { ReportExporter } from "../utils/exporters";
 import { AIService } from "../services/aiService";
 import { FixApplicator } from "../utils/fixApplicator";
+import hljs from "highlight.js";
 
 export class ReviewWebviewPanel {
   public static currentPanel: ReviewWebviewPanel | undefined;
@@ -11,12 +12,16 @@ export class ReviewWebviewPanel {
   private _reviewResult: ReviewResult;
   private _targetBranch: string;
   private _fileCount: number;
+  private _currentBranch: string;
+  private _changedFiles: string[];
 
   public static createOrShow(
     extensionUri: vscode.Uri,
     reviewResult: ReviewResult,
     targetBranch: string,
-    fileCount: number
+    fileCount: number,
+    currentBranch: string = "",
+    changedFiles: string[] = []
   ) {
     const column = vscode.ViewColumn.Beside;
 
@@ -25,7 +30,9 @@ export class ReviewWebviewPanel {
       ReviewWebviewPanel.currentPanel.update(
         reviewResult,
         targetBranch,
-        fileCount
+        fileCount,
+        currentBranch,
+        changedFiles
       );
       return;
     }
@@ -48,7 +55,9 @@ export class ReviewWebviewPanel {
       extensionUri,
       reviewResult,
       targetBranch,
-      fileCount
+      fileCount,
+      currentBranch,
+      changedFiles
     );
   }
 
@@ -57,14 +66,24 @@ export class ReviewWebviewPanel {
     extensionUri: vscode.Uri,
     reviewResult: ReviewResult,
     targetBranch: string,
-    fileCount: number
+    fileCount: number,
+    currentBranch: string = "",
+    changedFiles: string[] = []
   ) {
     this._panel = panel;
     this._reviewResult = reviewResult;
     this._targetBranch = targetBranch;
     this._fileCount = fileCount;
+    this._currentBranch = currentBranch;
+    this._changedFiles = changedFiles;
 
-    this.update(reviewResult, targetBranch, fileCount);
+    this.update(
+      reviewResult,
+      targetBranch,
+      fileCount,
+      currentBranch,
+      changedFiles
+    );
 
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
@@ -85,10 +104,14 @@ export class ReviewWebviewPanel {
             break;
           case "openChat":
             const issueToChat = this._reviewResult.issues[message.issueIndex];
-            const chatQuery = issueToChat 
-                ? `@workspace Fix the issue in ${issueToChat.file}:${issueToChat.line}: "${issueToChat.message}". \n\nContext:\n${issueToChat.codeSnippet || ''}`
-                : `Fix issue: ${message.message}`;
-            
+            const chatQuery = issueToChat
+              ? `workspace /fix the issue in ${issueToChat.file}:${
+                  issueToChat.line
+                }: "${issueToChat.message}". \n\nContext:\n${
+                  issueToChat.codeSnippet || ""
+                }`
+              : `Fix issue: ${message.message}`;
+
             await vscode.commands.executeCommand("workbench.action.chat.open", {
               query: chatQuery,
             });
@@ -125,7 +148,11 @@ export class ReviewWebviewPanel {
 
     // Open Chat with the fix request
     await vscode.commands.executeCommand("workbench.action.chat.open", {
-      query: `@workspace Fix the issue "${issue.message}" in ${issue.file}:${issue.line}. \n\nContext:\n${issue.codeSnippet || ''}\n\nSuggested fix:\n${fixContent}`,
+      query: `@workspace /fix the issue "${issue.message}" in ${issue.file}:${
+        issue.line
+      }. \n\nContext:\n${
+        issue.codeSnippet || ""
+      }\n\nSuggested fix:\n${fixContent}`,
     });
   }
 
@@ -212,7 +239,13 @@ export class ReviewWebviewPanel {
     }
 
     issue.fixStatus = "dismissed";
-    this.update(this._reviewResult, this._targetBranch, this._fileCount);
+    this.update(
+      this._reviewResult,
+      this._targetBranch,
+      this._fileCount,
+      this._currentBranch,
+      this._changedFiles
+    );
     vscode.window.showInformationMessage("Issue dismissed");
   }
 
@@ -228,19 +261,27 @@ export class ReviewWebviewPanel {
   public update(
     reviewResult: ReviewResult,
     targetBranch: string,
-    fileCount: number
+    fileCount: number,
+    currentBranch: string = "",
+    changedFiles: string[] = []
   ) {
+    this._currentBranch = currentBranch;
+    this._changedFiles = changedFiles;
     this._panel.webview.html = this._getHtmlContent(
       reviewResult,
       targetBranch,
-      fileCount
+      fileCount,
+      currentBranch,
+      changedFiles
     );
   }
 
   private _getHtmlContent(
     reviewResult: ReviewResult,
     targetBranch: string,
-    fileCount: number
+    fileCount: number,
+    currentBranch: string = "",
+    changedFiles: string[] = []
   ): string {
     const stats = this._calculateStats(reviewResult.issues);
 
@@ -252,27 +293,28 @@ export class ReviewWebviewPanel {
     <title>AI Code Review</title>
     <style>
         :root {
-            --container-padding: 0;
-            --card-radius: 4px;
-            --font-family: var(--vscode-font-family);
-            --font-size: var(--vscode-font-size);
+            --container-padding: 16px;
+            --card-radius: 6px;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-size: 13px;
             --line-height: 1.5;
             
             --bg-color: var(--vscode-editor-background);
             --text-color: var(--vscode-editor-foreground);
-            --border-color: var(--vscode-panel-border);
+            --border-color: var(--vscode-widget-border);
             --hover-bg: var(--vscode-list-hoverBackground);
             --active-bg: var(--vscode-list-activeSelectionBackground);
-            --header-bg: var(--vscode-sideBar-background);
+            --header-bg: var(--vscode-editor-background);
+            --card-bg: var(--vscode-editor-background);
             
-            --code-bg: var(--vscode-textCodeBlock-background);
-            --code-border: var(--vscode-textSeparator-foreground);
+            --code-bg: var(--vscode-textBlockQuote-background);
+            --code-border: var(--vscode-textBlockQuote-border);
             
             --accent-color: var(--vscode-textLink-foreground);
-            --success-color: var(--vscode-charts-green, #4ec9b0);
-            --warning-color: var(--vscode-charts-yellow, #dcdcaa);
-            --error-color: var(--vscode-charts-red, #f48771);
-            --info-color: var(--vscode-charts-blue, #569cd6);
+            --success-color: #4ec9b0;
+            --warning-color: #cca700;
+            --error-color: #f14c4c;
+            --info-color: #3794ff;
             
             --keyword-color: #569cd6;
             --string-color: #ce9178;
@@ -287,31 +329,36 @@ export class ReviewWebviewPanel {
             font-size: var(--font-size);
             color: var(--text-color);
             background-color: var(--bg-color);
-            padding: 0;
+            padding: var(--container-padding);
             margin: 0;
             line-height: var(--line-height);
         }
         
         /* Header Stats */
         .header-stats {
-            display: flex;
-            gap: 1px;
-            background: var(--border-color);
-            margin-bottom: 16px;
-            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
         }
         
         .stat-item {
-            flex: 1;
             padding: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--card-radius);
             text-align: center;
-            background: var(--header-bg);
-            cursor: default;
+            transition: transform 0.1s ease;
+        }
+        
+        .stat-item:hover {
+            transform: translateY(-1px);
+            border-color: var(--accent-color);
         }
         
         .stat-value {
-            font-size: 24px;
-            font-weight: 300;
+            font-size: 20px;
+            font-weight: 600;
             display: block;
             margin-bottom: 4px;
         }
@@ -321,6 +368,7 @@ export class ReviewWebviewPanel {
             text-transform: uppercase;
             opacity: 0.7;
             font-weight: 600;
+            letter-spacing: 0.5px;
         }
         
         .stat-item.error .stat-value { color: var(--error-color); }
@@ -330,37 +378,46 @@ export class ReviewWebviewPanel {
         /* Tabs */
         .tabs {
             display: flex;
-            padding: 0 16px;
+            gap: 20px;
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: 16px;
+            margin-bottom: 20px;
+            padding: 0 4px;
         }
         
         .tab {
-            padding: 8px 16px;
+            padding: 8px 0;
             cursor: pointer;
             background: transparent;
             color: var(--text-color);
             border: none;
             border-bottom: 2px solid transparent;
-            opacity: 0.7;
-            font-size: 12px;
-            text-transform: uppercase;
-            font-weight: 600;
+            opacity: 0.6;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
         }
+        
+        .tab:hover { opacity: 1; }
         
         .tab.active {
             opacity: 1;
             border-bottom-color: var(--accent-color);
+            color: var(--accent-color);
         }
         
-        .tab-content { display: none; padding: 0 16px 16px; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
         .tab-content.active { display: block; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         /* Controls */
         .controls {
             display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
+            gap: 12px;
+            margin-bottom: 20px;
             align-items: center;
         }
         
@@ -370,8 +427,12 @@ export class ReviewWebviewPanel {
             align-items: center;
             background: var(--vscode-input-background);
             border: 1px solid var(--vscode-input-border);
-            border-radius: 2px;
-            padding: 4px 8px;
+            border-radius: 4px;
+            padding: 6px 10px;
+        }
+        
+        .search-box:focus-within {
+            border-color: var(--vscode-focusBorder);
         }
         
         .search-box input {
@@ -381,24 +442,32 @@ export class ReviewWebviewPanel {
             color: var(--vscode-input-foreground);
             outline: none;
             font-family: inherit;
+            font-size: 13px;
+            margin-left: 8px;
+        }
+        
+        .filter-group {
+            display: flex;
+            background: var(--vscode-button-secondaryBackground);
+            border-radius: 4px;
+            padding: 2px;
         }
         
         .filter-btn {
             background: transparent;
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            padding: 4px 8px;
-            border-radius: 2px;
+            border: none;
+            color: var(--vscode-button-secondaryForeground);
+            padding: 4px 12px;
+            border-radius: 3px;
             cursor: pointer;
-            font-size: 11px;
-            opacity: 0.7;
+            font-size: 12px;
+            font-weight: 500;
         }
         
         .filter-btn.active {
             background: var(--vscode-button-background);
             color: var(--vscode-button-foreground);
-            border-color: var(--vscode-button-background);
-            opacity: 1;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
 
         /* File Groups */
@@ -407,28 +476,44 @@ export class ReviewWebviewPanel {
             border: 1px solid var(--border-color);
             border-radius: var(--card-radius);
             overflow: hidden;
+            background: var(--card-bg);
         }
         
         .file-header {
-            background: var(--header-bg);
-            padding: 8px 12px;
+            background: var(--vscode-sideBar-background);
+            padding: 10px 16px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 600;
             border-bottom: 1px solid var(--border-color);
+            user-select: none;
         }
         
         .file-header:hover { background: var(--hover-bg); }
+        
+        .file-name { display: flex; align-items: center; gap: 8px; }
+        .toggle-icon { font-size: 10px; transition: transform 0.2s; }
+        .file-header.collapsed .toggle-icon { transform: rotate(-90deg); }
+        .file-header.collapsed { border-bottom: none; }
+        
+        .file-issues-count {
+            background: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
         
         .file-issues { padding: 0; }
         .file-issues.collapsed { display: none; }
         
         /* Issue Card */
         .issue-card {
-            padding: 12px;
+            padding: 16px;
             border-bottom: 1px solid var(--border-color);
             position: relative;
         }
@@ -438,91 +523,132 @@ export class ReviewWebviewPanel {
         .issue-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            align-items: center;
+            margin-bottom: 12px;
+            align-items: flex-start;
         }
         
-        .issue-badges { display: flex; gap: 6px; align-items: center; }
+        .issue-badges { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         
         .badge {
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 2px;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 12px;
             font-weight: 600;
-            text-transform: uppercase;
-            border: 1px solid currentColor;
+            text-transform: capitalize;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
         
-        .badge.error { color: var(--error-color); background: rgba(244, 135, 113, 0.1); }
-        .badge.warning { color: var(--warning-color); background: rgba(220, 220, 170, 0.1); }
-        .badge.info { color: var(--info-color); background: rgba(86, 156, 214, 0.1); }
+        .badge.error { color: var(--error-color); background: rgba(241, 76, 76, 0.1); border: 1px solid rgba(241, 76, 76, 0.2); }
+        .badge.warning { color: var(--warning-color); background: rgba(204, 167, 0, 0.1); border: 1px solid rgba(204, 167, 0, 0.2); }
+        .badge.info { color: var(--info-color); background: rgba(55, 148, 255, 0.1); border: 1px solid rgba(55, 148, 255, 0.2); }
+        
+        .badge.category {
+            background: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+            border: none;
+            opacity: 0.8;
+        }
         
         .issue-location {
-            font-family: monospace;
+            font-family: 'Menlo', 'Monaco', monospace;
             font-size: 11px;
             opacity: 0.6;
             cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.2s;
         }
-        .issue-location:hover { opacity: 1; color: var(--accent-color); }
+        .issue-location:hover { 
+            opacity: 1; 
+            background: var(--hover-bg);
+            color: var(--accent-color); 
+        }
         
         .issue-message {
-            margin-bottom: 12px;
-            font-size: 13px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            line-height: 1.6;
         }
         
         /* Code Block */
         .code-block {
             background: var(--code-bg);
             border: 1px solid var(--code-border);
-            border-radius: 2px;
-            margin: 8px 0;
+            border-radius: 4px;
+            margin: 12px 0;
             font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
             font-size: 12px;
             overflow-x: auto;
+            padding: 8px 0;
         }
         
         .code-line {
             display: flex;
-            padding: 0 4px;
+            padding: 2px 12px;
+            line-height: 1.5;
         }
+        
+        .code-line:hover { background: rgba(255,255,255,0.05); }
         
         .line-number {
-            width: 30px;
+            width: 35px;
             text-align: right;
-            padding-right: 8px;
+            padding-right: 12px;
             color: var(--vscode-editorLineNumber-foreground);
             border-right: 1px solid var(--code-border);
-            margin-right: 8px;
+            margin-right: 12px;
             user-select: none;
             opacity: 0.5;
+            font-size: 11px;
         }
         
-        .code-content { white-space: pre; flex: 1; }
+        .code-content { white-space: pre; flex: 1; color: var(--vscode-editor-foreground); }
         
-        /* Syntax Highlighting */
-        .keyword { color: var(--keyword-color); }
-        .string { color: var(--string-color); }
-        .comment { color: var(--comment-color); }
-        .function { color: var(--function-color); }
+        /* Syntax Highlighting - highlight.js classes */
+        .hljs-keyword { color: var(--keyword-color); font-weight: bold; }
+        .hljs-string { color: var(--string-color); }
+        .hljs-comment { color: var(--comment-color); font-style: italic; }
+        .hljs-function { color: var(--function-color); }
+        .hljs-title { color: var(--function-color); }
+        .hljs-params { color: var(--vscode-editor-foreground); }
+        .hljs-number { color: #b5cea8; }
+        .hljs-literal { color: #569cd6; }
+        .hljs-built_in { color: #4ec9b0; }
+        .hljs-class { color: #4ec9b0; }
+        .hljs-variable { color: #9cdcfe; }
+        .hljs-attr { color: #9cdcfe; }
+        .hljs-property { color: #9cdcfe; }
+        .hljs-operator { color: var(--vscode-editor-foreground); }
         
         /* Actions */
         .actions {
             display: flex;
             gap: 8px;
-            margin-top: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
         }
         
         .btn {
-            padding: 4px 10px;
+            padding: 6px 12px;
             border: 1px solid var(--border-color);
             background: var(--vscode-button-secondaryBackground);
             color: var(--vscode-button-secondaryForeground);
-            border-radius: 2px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 11px;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
         
-        .btn:hover { background: var(--vscode-button-secondaryHoverBackground); }
+        .btn:hover { 
+            background: var(--vscode-button-secondaryHoverBackground);
+            transform: translateY(-1px);
+        }
         
         .btn-primary {
             background: var(--vscode-button-background);
@@ -530,16 +656,20 @@ export class ReviewWebviewPanel {
             border-color: var(--vscode-button-background);
         }
         
-        .btn-primary:hover { background: var(--vscode-button-hoverBackground); }
+        .btn-primary:hover { 
+            background: var(--vscode-button-hoverBackground);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
         
         /* Diff View */
         .diff-view {
             display: flex;
             border: 1px solid var(--code-border);
-            border-radius: 2px;
-            margin: 8px 0;
+            border-radius: 4px;
+            margin: 12px 0;
             font-family: monospace;
             font-size: 12px;
+            overflow: hidden;
         }
         
         .diff-view.stacked {
@@ -547,12 +677,13 @@ export class ReviewWebviewPanel {
         }
 
         .diff-header {
-            padding: 4px 8px;
+            padding: 6px 12px;
             font-size: 11px;
             font-weight: 600;
             background: var(--header-bg);
             border-bottom: 1px solid var(--code-border);
             opacity: 0.8;
+            text-transform: uppercase;
         }
         
         .diff-section {
@@ -566,11 +697,178 @@ export class ReviewWebviewPanel {
         .diff-col { flex: 1; overflow: hidden; }
         .diff-col.old { border-right: 1px solid var(--code-border); }
         
-        .diff-line { padding: 2px 4px; white-space: pre; overflow-x: auto; min-height: 18px; }
-        .diff-line.del { background: rgba(244, 135, 113, 0.2); }
-        .diff-line.add { background: rgba(78, 201, 176, 0.2); }
+        .diff-line { padding: 2px 12px; white-space: pre; overflow-x: auto; min-height: 20px; }
+        .diff-line.del { background: rgba(244, 135, 113, 0.15); text-decoration: line-through; opacity: 0.8; }
+        .diff-line.add { background: rgba(78, 201, 176, 0.15); }
         
-        .loading { opacity: 0.6; font-style: italic; }
+        .loading { opacity: 0.6; font-style: italic; padding: 12px; }
+        
+        .explanation {
+            margin-top: 12px;
+            padding: 12px;
+            background: var(--vscode-textBlockQuote-background);
+            border-left: 3px solid var(--accent-color);
+            border-radius: 0 4px 4px 0;
+            display: none;
+        }
+        
+        .explanation.visible { display: block; animation: fadeIn 0.3s; }
+        
+        /* MR Details Styles */
+        .mr-section {
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--card-radius);
+            overflow: hidden;
+            background: var(--card-bg);
+        }
+        
+        .mr-section-header {
+            padding: 12px 16px;
+            background: var(--vscode-sideBar-background);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .mr-section-header-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .mr-section-content {
+            padding: 16px;
+        }
+        
+        .mr-metadata {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .mr-metadata-item {
+            padding: 12px;
+            background: var(--vscode-input-background);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+        
+        .mr-metadata-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            opacity: 0.6;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .mr-metadata-value {
+            font-family: 'Menlo', 'Monaco', monospace;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .mr-text-block {
+            background: var(--code-bg);
+            border: 1px solid var(--code-border);
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .mr-file-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        
+        .mr-file-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-family: 'Menlo', 'Monaco', monospace;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+        
+        .mr-file-item:last-child {
+            border-bottom: none;
+        }
+        
+        .mr-file-item:hover {
+            background: var(--hover-bg);
+        }
+        
+        .mr-file-icon {
+            opacity: 0.6;
+            font-size: 14px;
+        }
+        
+        .mr-command-block {
+            background: var(--code-bg);
+            border: 1px solid var(--code-border);
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Menlo', 'Monaco', monospace;
+            font-size: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        
+        .mr-command-text {
+            flex: 1;
+            color: var(--string-color);
+        }
+        
+        .copy-btn {
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: 1px solid var(--border-color);
+            padding: 4px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .copy-btn:hover {
+            background: var(--vscode-button-secondaryHoverBackground);
+            transform: translateY(-1px);
+        }
+        
+        .copy-btn.copied {
+            background: var(--success-color);
+            color: white;
+            border-color: var(--success-color);
+        }
+        
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            opacity: 0.6;
+        }
+        
+        .empty-state h2 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
@@ -619,41 +917,12 @@ export class ReviewWebviewPanel {
     </div>
 
     <div id="tab-mr-details" class="tab-content">
-        ${
-          reviewResult.mrDescription || reviewResult.mrComment
-            ? `
-        <div class="mr-info-section">
-            <div class="mr-info-header">
-                <span>Pull Request Details</span>
-            </div>
-            
-            ${
-              reviewResult.mrDescription
-                ? `
-                <div style="margin-bottom: 8px; font-weight: 600; font-size: 11px; text-transform: uppercase; opacity: 0.7;">Description</div>
-                <div class="mr-info-content" id="mr-desc">${this._escapeHtml(
-                  reviewResult.mrDescription
-                )}</div>
-                <button class="btn" onclick="copyText('mr-desc')" style="margin-bottom: 16px;">Copy Description</button>
-            `
-                : ""
-            }
-
-            ${
-              reviewResult.mrComment
-                ? `
-                <div style="margin-bottom: 8px; font-weight: 600; font-size: 11px; text-transform: uppercase; opacity: 0.7;">Quick Comment</div>
-                <div class="mr-info-content" id="mr-comment">${this._escapeHtml(
-                  reviewResult.mrComment
-                )}</div>
-                <button class="btn" onclick="copyText('mr-comment')">Copy Comment</button>
-            `
-                : ""
-            }
-        </div>
-        `
-            : '<div class="empty-state"><p>No MR details available.</p></div>'
-        }
+        ${this._renderMRDetails(
+          reviewResult,
+          targetBranch,
+          currentBranch,
+          changedFiles
+        )}
     </div>
 
     <script>
@@ -704,9 +973,41 @@ export class ReviewWebviewPanel {
         }
 
         function copyText(elementId) {
-            const text = document.getElementById(elementId).innerText;
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            const text = element.innerText;
             navigator.clipboard.writeText(text).then(() => {
-                // Show toast or feedback
+                // Find the button that triggered this (if any)
+                const btn = event?.target;
+                if (btn && btn.classList.contains('copy-btn')) {
+                    const originalText = btn.innerText;
+                    btn.innerText = '✓ Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+
+        function copyCommand(command) {
+            navigator.clipboard.writeText(command).then(() => {
+                const btn = event?.target;
+                if (btn) {
+                    const originalText = btn.innerText;
+                    btn.innerText = '✓ Copied!';
+                    btn.classList.add('copied');
+                    setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }
+            }).catch(err => {
+                console.error('Failed to copy:', err);
             });
         }
 
@@ -729,7 +1030,7 @@ export class ReviewWebviewPanel {
                 box.innerHTML = '<div class="loading">Thinking...</div>';
             } else if (msg.type === 'explanationResult') {
                 const box = document.getElementById('explain-' + msg.issueIndex);
-                box.innerHTML = '<strong>AI Explanation:</strong><br><br>' + msg.explanation.replace(/\\n/g, '<br>');
+                box.innerHTML = '<div style="font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);">💡 AI Explanation</div>' + msg.explanation;
             }
         });
 
@@ -769,22 +1070,8 @@ export class ReviewWebviewPanel {
             });
         }
         
-        // Syntax Highlighting
-        function highlightCode() {
-            document.querySelectorAll('.code-line').forEach(el => {
-                let html = el.innerHTML;
-                // Comments
-                html = html.replace(/(\\/\\/.*$)/gm, '<span class="comment">$1</span>');
-                // Strings
-                html = html.replace(/('.*?'|".*?")/g, '<span class="string">$1</span>');
-                // Keywords
-                html = html.replace(/\\b(const|let|var|function|class|import|export|return|if|else|for|while|async|await|new|this|super|extends|implements|interface|type|public|private|protected|static|readonly)\\b/g, '<span class="keyword">$1</span>');
-                el.innerHTML = html;
-            });
-        }
-        
-        // Run highlighting
-        highlightCode();
+        // Syntax highlighting is now done server-side during rendering
+        // No need to run client-side highlighting
     </script>
 </body>
 </html>`;
@@ -813,6 +1100,24 @@ export class ReviewWebviewPanel {
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+
+  private _highlightSyntax(code: string): string {
+    // Use highlight.js for proper syntax highlighting
+    try {
+      const result = hljs.highlightAuto(code, [
+        "typescript",
+        "javascript",
+        "python",
+        "java",
+        "go",
+        "rust",
+      ]);
+      return result.value;
+    } catch (error) {
+      // Fallback to escaped HTML if highlighting fails
+      return this._escapeHtml(code);
+    }
   }
 
   private _escapeJson(text: string): string {
@@ -918,11 +1223,6 @@ export class ReviewWebviewPanel {
                             ? `<button class="btn" onclick="dismiss(${index})">Dismiss</button>`
                             : ""
                         }
-                        <button class="btn ai-chat-btn" onclick="chatAbout(${index}, '${this._escapeString(
-          issue.message
-        )}')">
-                            Chat
-                        </button>
                     </div>
                 </div>
             `;
@@ -945,10 +1245,12 @@ export class ReviewWebviewPanel {
 
     lines.forEach((line, idx) => {
       const currentLine = startLine + idx;
+      // Apply syntax highlighting directly here instead of in JS
+      const highlightedLine = this._highlightSyntax(line);
       html += `
         <div class="code-line">
             <span class="line-number">${currentLine}</span>
-            <span class="code-content">${this._escapeHtml(line)}</span>
+            <span class="code-content">${highlightedLine}</span>
         </div>`;
     });
 
@@ -981,10 +1283,11 @@ export class ReviewWebviewPanel {
     )}</div>`;
 
     lines.forEach((line, idx) => {
+      const highlightedLine = this._highlightSyntax(line);
       html += `
         <div class="code-line">
             <span class="line-number">${idx + 1}</span>
-            <span class="code-content">${this._escapeHtml(line)}</span>
+            <span class="code-content">${highlightedLine}</span>
         </div>`;
     });
 
@@ -1001,43 +1304,47 @@ export class ReviewWebviewPanel {
     const newLines = newCode.split("\n");
 
     let html = '<div class="diff-view">';
-    
+
     // Simple side-by-side if line counts match, otherwise stacked
     if (oldLines.length === newLines.length) {
-        let oldHtml = "";
-        let newHtml = "";
-        
-        oldLines.forEach((line, i) => {
-            const newLine = newLines[i];
-            const isDiff = line !== newLine;
-            const oldClass = isDiff ? "diff-line del" : "diff-line";
-            const newClass = isDiff ? "diff-line add" : "diff-line";
-            
-            oldHtml += `<div class="${oldClass}">${this._escapeHtml(line || ' ')}</div>`;
-            newHtml += `<div class="${newClass}">${this._escapeHtml(newLine || ' ')}</div>`;
-        });
-        
-        html += `<div class="diff-col old">${oldHtml}</div>`;
-        html += `<div class="diff-col new">${newHtml}</div>`;
+      let oldHtml = "";
+      let newHtml = "";
+
+      oldLines.forEach((line, i) => {
+        const newLine = newLines[i];
+        const isDiff = line !== newLine;
+        const oldClass = isDiff ? "diff-line del" : "diff-line";
+        const newClass = isDiff ? "diff-line add" : "diff-line";
+
+        oldHtml += `<div class="${oldClass}">${this._escapeHtml(
+          line || " "
+        )}</div>`;
+        newHtml += `<div class="${newClass}">${this._escapeHtml(
+          newLine || " "
+        )}</div>`;
+      });
+
+      html += `<div class="diff-col old">${oldHtml}</div>`;
+      html += `<div class="diff-col new">${newHtml}</div>`;
     } else {
-        // Stacked view for mismatched line counts
-        html = '<div class="diff-view stacked">';
-        html += '<div class="diff-header">Original</div>';
-        html += '<div class="diff-section old">';
-        oldLines.forEach(line => {
-            html += `<div class="diff-line del">- ${this._escapeHtml(line)}</div>`;
-        });
-        html += '</div>';
-        
-        html += '<div class="diff-header">Suggested</div>';
-        html += '<div class="diff-section new">';
-        newLines.forEach(line => {
-            html += `<div class="diff-line add">+ ${this._escapeHtml(line)}</div>`;
-        });
-        html += '</div>';
+      // Stacked view for mismatched line counts
+      html = '<div class="diff-view stacked">';
+      html += '<div class="diff-header">Original</div>';
+      html += '<div class="diff-section old">';
+      oldLines.forEach((line) => {
+        html += `<div class="diff-line del">- ${this._escapeHtml(line)}</div>`;
+      });
+      html += "</div>";
+
+      html += '<div class="diff-header">Suggested</div>';
+      html += '<div class="diff-section new">';
+      newLines.forEach((line) => {
+        html += `<div class="diff-line add">+ ${this._escapeHtml(line)}</div>`;
+      });
+      html += "</div>";
     }
 
-    html += '</div>';
+    html += "</div>";
     return html;
   }
 
@@ -1066,11 +1373,16 @@ export class ReviewWebviewPanel {
 
       const explanation = await AIService.explainIssue(issue, content);
 
+      // Format explanation with markdown and syntax highlighting
+      const formattedExplanation = explanation
+        ? this._formatMRText(explanation)
+        : "No explanation available.";
+
       // Send explanation back to UI
       this._panel.webview.postMessage({
         type: "explanationResult",
         issueIndex,
-        explanation,
+        explanation: formattedExplanation,
       });
     } catch (error) {
       vscode.window.showErrorMessage(
@@ -1110,6 +1422,256 @@ export class ReviewWebviewPanel {
         `Failed to chat about issue: ${(error as Error).message}`
       );
     }
+  }
+
+  private _renderMRDetails(
+    reviewResult: ReviewResult,
+    targetBranch: string,
+    currentBranch: string,
+    changedFiles: string[]
+  ): string {
+    const hasDescription = reviewResult.mrDescription;
+    const hasComment = reviewResult.mrComment;
+    const hasFiles = changedFiles && changedFiles.length > 0;
+
+    if (!hasDescription && !hasComment && !hasFiles) {
+      return '<div class="empty-state"><h2>📋 No MR Details</h2><p>No merge request information available.</p></div>';
+    }
+
+    const gitCommands = this._getGitCommands(currentBranch, targetBranch);
+
+    return `
+      <!-- MR Metadata -->
+      <div class="mr-section">
+        <div class="mr-section-header">
+          <div class="mr-section-header-title">
+            <span>🔀</span>
+            <span>Merge Request Overview</span>
+          </div>
+        </div>
+        <div class="mr-section-content">
+          <div class="mr-metadata">
+            <div class="mr-metadata-item">
+              <div class="mr-metadata-label">Source Branch</div>
+              <div class="mr-metadata-value">${this._escapeHtml(
+                currentBranch || "N/A"
+              )}</div>
+            </div>
+            <div class="mr-metadata-item">
+              <div class="mr-metadata-label">Target Branch</div>
+              <div class="mr-metadata-value">${this._escapeHtml(
+                targetBranch
+              )}</div>
+            </div>
+            <div class="mr-metadata-item">
+              <div class="mr-metadata-label">Files Changed</div>
+              <div class="mr-metadata-value">${changedFiles.length} files</div>
+            </div>
+            <div class="mr-metadata-item">
+              <div class="mr-metadata-label">Issues Found</div>
+              <div class="mr-metadata-value">${
+                reviewResult.issues.length
+              } issues</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Git Commands -->
+      ${
+        currentBranch
+          ? `
+      <div class="mr-section">
+        <div class="mr-section-header">
+          <div class="mr-section-header-title">
+            <span>⚡</span>
+            <span>Quick Commands</span>
+          </div>
+        </div>
+        <div class="mr-section-content">
+          ${gitCommands
+            .map(
+              (cmd) => `
+            <div class="mr-command-block">
+              <div class="mr-command-text">${this._escapeHtml(
+                cmd.command
+              )}</div>
+              <button class="copy-btn" onclick="copyCommand('${this._escapeString(
+                cmd.command
+              )}')">
+                📋 Copy
+              </button>
+            </div>
+            <div style="font-size: 11px; opacity: 0.6; margin-bottom: 12px; padding-left: 12px;">
+              ${this._escapeHtml(cmd.description)}
+            </div>
+          `
+            )
+            .join("")}
+        </div>
+      </div>
+      `
+          : ""
+      }
+
+      <!-- Changed Files -->
+      ${
+        hasFiles
+          ? `
+      <div class="mr-section">
+        <div class="mr-section-header">
+          <div class="mr-section-header-title">
+            <span>📁</span>
+            <span>Changed Files (${changedFiles.length})</span>
+          </div>
+        </div>
+        <div class="mr-section-content" style="padding: 0;">
+          <ul class="mr-file-list">
+            ${changedFiles
+              .map(
+                (file) => `
+              <li class="mr-file-item">
+                <span class="mr-file-icon">${this._getFileIcon(file)}</span>
+                <span>${this._escapeHtml(file)}</span>
+              </li>
+            `
+              )
+              .join("")}
+          </ul>
+        </div>
+      </div>
+      `
+          : ""
+      }
+
+      <!-- MR Description -->
+      ${
+        hasDescription
+          ? `
+      <div class="mr-section">
+        <div class="mr-section-header">
+          <div class="mr-section-header-title">
+            <span>📝</span>
+            <span>Merge Request Description</span>
+          </div>
+          <button class="copy-btn" onclick="copyText('mr-description')">
+            📋 Copy
+          </button>
+        </div>
+        <div class="mr-section-content">
+          <div class="mr-text-block" id="mr-description">${this._formatMRText(
+            reviewResult.mrDescription || ""
+          )}</div>
+        </div>
+      </div>
+      `
+          : ""
+      }
+
+      <!-- MR Comment -->
+      ${
+        hasComment
+          ? `
+      <div class="mr-section">
+        <div class="mr-section-header">
+          <div class="mr-section-header-title">
+            <span>💬</span>
+            <span>Quick Comment</span>
+          </div>
+          <button class="copy-btn" onclick="copyText('mr-comment')">
+            📋 Copy
+          </button>
+        </div>
+        <div class="mr-section-content">
+          <div class="mr-text-block" id="mr-comment">${this._formatMRText(
+            reviewResult.mrComment || ""
+          )}</div>
+        </div>
+      </div>
+      `
+          : ""
+      }
+    `;
+  }
+
+  private _getGitCommands(
+    currentBranch: string,
+    targetBranch: string
+  ): Array<{ command: string; description: string }> {
+    if (!currentBranch) {
+      return [];
+    }
+
+    return [
+      {
+        command: `git push origin ${currentBranch}`,
+        description: "Push your branch to remote",
+      },
+      {
+        command: `git push -u origin ${currentBranch}`,
+        description: "Push and set upstream (first time)",
+      },
+      {
+        command: `gh pr create --base ${targetBranch} --head ${currentBranch}`,
+        description: "Create PR using GitHub CLI",
+      },
+      {
+        command: `git request-pull ${targetBranch} origin ${currentBranch}`,
+        description: "Generate pull request summary",
+      },
+    ];
+  }
+
+  private _getFileIcon(filePath: string): string {
+    const ext = filePath.split(".").pop()?.toLowerCase();
+    const fileIcons: Record<string, string> = {
+      ts: "📘",
+      tsx: "⚛️",
+      js: "📜",
+      jsx: "⚛️",
+      json: "📋",
+      md: "📄",
+      css: "🎨",
+      scss: "🎨",
+      html: "🌐",
+      py: "🐍",
+      java: "☕",
+      go: "🐹",
+      rs: "🦀",
+      vue: "💚",
+      yaml: "⚙️",
+      yml: "⚙️",
+      xml: "📰",
+      sql: "🗄️",
+      sh: "🐚",
+      env: "🔒",
+      lock: "🔒",
+    };
+    return fileIcons[ext || ""] || "📄";
+  }
+
+  private _formatMRText(text: string): string {
+    // Apply syntax highlighting to code blocks in markdown
+    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+    let formatted = this._escapeHtml(text);
+
+    // Highlight code blocks
+    formatted = formatted.replace(codeBlockRegex, (match, lang, code) => {
+      const highlighted = this._highlightSyntax(code);
+      return `<div class="code-block">${highlighted}</div>`;
+    });
+
+    // Convert markdown bold/italic (simple)
+    formatted = formatted.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    formatted = formatted.replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+    // Convert inline code
+    formatted = formatted.replace(
+      /`([^`]+)`/g,
+      '<code style="background: var(--code-bg); padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 12px;">$1</code>'
+    );
+
+    return formatted;
   }
 
   public dispose() {

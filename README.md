@@ -15,12 +15,12 @@
 
 ### 🎨 Modern, Intuitive UI
 
-- **Compact Design**: GitHub/GitLab-inspired interface with reduced spacing
-- **Proper Code Rendering**: Syntax-highlighted code blocks with line numbers
-- **Copy-to-Clipboard**: Quick copy buttons for all code snippets
-- **Diff View**: Side-by-side comparison for suggested fixes
-- **Dark/Light Theme Support**: Automatically matches VS Code theme
-- **Collapsible Sections**: Organized by file with issue counts
+- **Aesthetic & Compact**: A completely redesigned, modern interface that maximizes screen real estate
+- **Beautiful Typography**: Clean, system-native font stack for better readability
+- **Proper Code Rendering**: Syntax-highlighted code blocks with accurate line numbers and styling
+- **Visual Hierarchy**: Clear distinction between errors, warnings, and info with refined badges
+- **Dark/Light Theme Support**: Seamless integration with VS Code's native themes
+- **Responsive Design**: Fluid layout that adapts to different panel sizes
 
 ### ⚡ Smart Features
 
@@ -48,46 +48,32 @@
 
 ## 📸 Screenshots
 
-### Main Review Panel
-
-![Review Panel](images/screenshot-panel.png)
-_Modern, compact UI with proper code rendering and syntax highlighting_
-
-### Code with Line Numbers
-
-![Code Blocks](images/screenshot-code.png)
-_Code blocks with line numbers and copy functionality_
-
-### Side-by-Side Diff
-
-![Diff View](images/screenshot-diff.png)
-_Compare before and after with diff view_
-
-### Side Panel
-
-![Side Panel](images/screenshot-sidepanel.png)
-_Quick navigation and statistics_
+![Review Panel](images/code-review.png)
+![Side Panel](images/side-panel.png)
+![MR Details](images/mr-details-1.png)
+![Inline Details](images/inline-error.png)
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- VS Code 1.106.1 or higher
-- GitHub Copilot subscription (for AI model access)
-- Git repository
+- **VS Code 1.106.1 or higher**
+- **Git** installed and accessible from command line
+- **GitHub Copilot subscription** (for Copilot models) OR **OpenAI/Anthropic API key** (for direct API access)
+- Active **Git repository** with uncommitted changes or feature branch
 
 ### Installation
 
-1. Install from VS Code Marketplace:
+1. **Install from VS Code Marketplace**:
 
    - Open VS Code
-   - Go to Extensions (`Ctrl+Shift+X` or `Cmd+Shift+X`)
+   - Press `Ctrl+Shift+X` (Windows/Linux) or `Cmd+Shift+X` (Mac)
    - Search for "AI Code Review"
-   - Click Install
+   - Click **Install**
 
-2. Or install from `.vsix`:
+2. **Or install via Command Line**:
    ```bash
-   code --install-extension codereview-ai-0.0.1.vsix
+   code --install-extension BogdanMihalca.codereview-ai
    ```
 
 ### Quick Start
@@ -116,7 +102,7 @@ Choose your preferred AI model in VS Code settings:
 Available options:
 
 - **Vendor**: `copilot`, `openai`, `anthropic`
-- **Family**: `gpt-4`, `gpt-4-turbo`, `gpt-3.5-turbo`, `claude-3-opus`, `claude-3-sonnet`, `claude-3-haiku`
+- **Family**: ` gpt-4.1`, `gpt-4`, `gpt-3.5-turbo`, `claude-sonet-3`, `claude-2`, `claude-3`
 
 ### Review Rules
 
@@ -262,17 +248,28 @@ The "Current Review" panel shows:
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+Contributions are welcome! Here's how:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## 📝 Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for a list of changes.
+See [CHANGELOG.md](CHANGELOG.md) for a complete list of changes and version history.
 
 ## 🐛 Known Issues
 
-- Very large diffs (>30,000 characters) are truncated
-- Line number accuracy depends on AI response quality
-- Fix suggestions may not always be perfect
+- **Large diffs**: Very large diffs (>30,000 characters) are automatically truncated to save tokens
+- **Line number accuracy**: AI models may occasionally report incorrect line numbers (the extension attempts to auto-correct these)
+- **Model availability**: Requires active GitHub Copilot subscription or API keys
+- **Git dependency**: Extension requires git to be installed and accessible from VS Code's integrated terminal
+
+Report issues at: [GitHub Issues](https://github.com/BogdanMihalca/codereview-ai/issues)
 
 ## 📜 License
 
@@ -286,10 +283,10 @@ This extension is licensed under the [MIT License](LICENSE).
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/codereview-ai/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/codereview-ai/discussions)
-- **Email**: support@example.com
+- **Report Bugs**: [GitHub Issues](https://github.com/BogdanMihalca/codereview-ai/issues)
+- **Feature Requests**: [GitHub Discussions](https://github.com/BogdanMihalca/codereview-ai/discussions)
+- **Documentation**: [GitHub Wiki](https://github.com/BogdanMihalca/codereview-ai/wiki)
 
 ---
 
-**Made with ❤️ by developers, for developers**
+**⭐ If you find this extension helpful, please star the [GitHub repository](https://github.com/BogdanMihalca/codereview-ai)!**
